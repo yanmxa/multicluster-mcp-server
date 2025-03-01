@@ -80,32 +80,65 @@ export async function listResources(request: CallToolRequest): Promise<CallToolR
       undefined
     )
 
-    // Map the list to the required fields
-    const formattedItems = listObject.items.map((item: any) => {
-      return {
-        NAME: item.metadata?.name || 'N/A',
-        READY: `${item.status?.replicas || 0}/${item.status?.availableReplicas || 0}`,
-        STATUS: item.status?.phase || '',  // Return empty string if phase doesn't exist
-        RESTARTS: item.status?.restartCount || 0,
-        AGE: item.metadata?.creationTimestamp ? getAge(item.metadata.creationTimestamp) : 'N/A',
-      };
-    });
+    // Define available fields for each Kubernetes resource type
+    const resourceFields: Record<string, string[]> = {
+      Pod: ["NAME", "READY", "STATUS", "RESTARTS", "AGE"],
+      Deployment: ["NAME", "READY", "AVAILABLE", "AGE"],
+      Service: ["NAME", "TYPE", "CLUSTER-IP", "PORTS", "AGE"],
+      StatefulSet: ["NAME", "READY", "AGE"],
+      Job: ["NAME", "COMPLETIONS", "DURATION", "AGE"]
+    };
 
-    // Convert to Markdown Table format
+    // Define the type structure for Kubernetes items
+    interface KubernetesItem {
+      NAME: string;
+      READY: string;
+      STATUS?: string;
+      RESTARTS?: number;
+      AGE: string;
+      AVAILABLE?: number;
+      TYPE?: string;
+      "CLUSTER-IP"?: string;
+      PORTS?: string;
+      COMPLETIONS?: string;
+      DURATION?: string;
+    }
+
+    // Determine the relevant fields based on resource type
+    let fields = resourceFields[resourceType] || ["NAME", "AGE"];
+
+    // Map the list to the required fields dynamically
+    const formattedItems: KubernetesItem[] = listObject.items.map((item: any) => ({
+      NAME: item.metadata?.name || "N/A",
+      READY: `${item.status?.replicas || 0}/${item.status?.readyReplicas || 0}`,
+      STATUS: item.status?.phase || undefined,
+      RESTARTS: item.status?.restartCount || undefined,
+      AGE: item.metadata?.creationTimestamp ? getAge(item.metadata.creationTimestamp) : "N/A",
+      AVAILABLE: item.status?.availableReplicas,
+      TYPE: item.spec?.type,
+      "CLUSTER-IP": item.spec?.clusterIP,
+      PORTS: item.spec?.ports?.map((p: any) => `${p.port}/${p.protocol}`).join(", "),
+      COMPLETIONS: item.status?.succeeded !== undefined ? `${item.status.succeeded}/${item.spec?.completions || 1}` : undefined,
+      DURATION: getJobDuration(item.status?.startTime, item.status?.completionTime)
+    }));
+
+    // **Filter out columns where all values are empty or undefined**
+    fields = fields.filter(field =>
+      formattedItems.some(item => item[field as keyof KubernetesItem] !== undefined && item[field as keyof KubernetesItem] !== "")
+    );
+
+    // Generate Markdown Table dynamically
     let markdownTable = [
-      "| NAME | READY | STATUS | RESTARTS | AGE |",
-      "| --- | --- | --- | --- | --- |",
-      ...formattedItems.map(item => {
-        // Only include STATUS column if it has a value
-        const statusColumn = item.STATUS ? `| ${item.STATUS}` : '';
-        return `| ${item.NAME} | ${item.READY} ${statusColumn} | ${item.RESTARTS} | ${item.AGE} |`;
-      })
+      `| ${fields.join(" | ")} |`,
+      `| ${fields.map(() => "---").join(" | ")} |`,
+      ...formattedItems.map(item =>
+        `| ${fields.map(field => item[field as keyof KubernetesItem] ?? "").join(" | ")} |`
+      )
     ].join("\n");
 
     if (listObject.items && listObject.items.length == 0) {
       markdownTable = `No resources(${resourceType}) found in ${namespace} namespace.`
     }
-
     return {
       content: [{
         type: "text",
@@ -115,6 +148,17 @@ export async function listResources(request: CallToolRequest): Promise<CallToolR
   } catch (error: any) {
     throw new Error(`Error listing ${resourceType}: ${error.message}`);
   }
+}
+
+// Helper function to calculate Job duration
+function getJobDuration(startTime?: string, completionTime?: string): string {
+  if (!startTime) return "N/A";
+  const start = new Date(startTime).getTime();
+  const end = completionTime ? new Date(completionTime).getTime() : Date.now();
+  const durationMs = end - start;
+  return durationMs < 60000
+    ? `${Math.floor(durationMs / 1000)}s`
+    : `${Math.floor(durationMs / 60000)}m`;
 }
 
 // Helper function to calculate AGE from timestamp
