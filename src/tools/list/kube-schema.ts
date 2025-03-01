@@ -11,7 +11,7 @@ export const LIST_RESOURCE: Tool = {
     properties: {
       resourceType: { type: "string", description: "The resource type (e.g., Pod, Deployment)." },
       namespace: { type: "string", description: "Namespace of the resources." },
-      labelSelector: { type: "string", description: "Optional label selector to filter results.", nullable: true },
+      labelSelector: { type: "string", description: "Optional label selector to filter results. don't provide the parameter if is null", nullable: true },
       fieldSelector: { type: "string", description: "Optional field selector to filter results.", nullable: true },
       cluster: { type: "string", description: "Optional cluster name for multi-cluster environments.", nullable: true }
     },

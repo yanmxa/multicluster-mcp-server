@@ -1,4 +1,4 @@
-import k8s, { KubernetesObjectApi, KubeConfig, KubernetesListObject, KubernetesObject, Log, LogOptions } from "@kubernetes/client-node";
+import k8s, { KubernetesObjectApi, KubeConfig, KubernetesListObject, KubernetesObject, Log, LogOptions, V1APIGroup } from "@kubernetes/client-node";
 import { Writable } from 'node:stream';
 import { CallToolRequest, CallToolRequestSchema, CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { getKubeResourceSchema } from "./kube-client.gvk-registry";
@@ -86,7 +86,9 @@ export async function listResources(request: CallToolRequest): Promise<CallToolR
       Deployment: ["NAME", "READY", "AVAILABLE", "AGE"],
       Service: ["NAME", "TYPE", "CLUSTER-IP", "PORTS", "AGE"],
       StatefulSet: ["NAME", "READY", "AGE"],
-      Job: ["NAME", "COMPLETIONS", "DURATION", "AGE"]
+      Job: ["NAME", "COMPLETIONS", "DURATION", "AGE"],
+      Secret: ["NAME", "TYPE", "DATA", "AGE"],
+      ConfigMap: ["NAME", "DATA", "AGE"]
     };
 
     // Define the type structure for Kubernetes items
@@ -98,47 +100,75 @@ export async function listResources(request: CallToolRequest): Promise<CallToolR
       AGE: string;
       AVAILABLE?: number;
       TYPE?: string;
+      DATA?: number;
       "CLUSTER-IP"?: string;
       PORTS?: string;
       COMPLETIONS?: string;
       DURATION?: string;
     }
 
-    // Determine the relevant fields based on resource type
-    let fields = resourceFields[resourceType] || ["NAME", "AGE"];
-
     // Map the list to the required fields dynamically
-    const formattedItems: KubernetesItem[] = listObject.items.map((item: any) => ({
-      NAME: item.metadata?.name || "N/A",
-      READY: `${item.status?.replicas || 0}/${item.status?.readyReplicas || 0}`,
-      STATUS: item.status?.phase || undefined,
-      RESTARTS: item.status?.restartCount || undefined,
-      AGE: item.metadata?.creationTimestamp ? getAge(item.metadata.creationTimestamp) : "N/A",
-      AVAILABLE: item.status?.availableReplicas,
-      TYPE: item.spec?.type,
-      "CLUSTER-IP": item.spec?.clusterIP,
-      PORTS: item.spec?.ports?.map((p: any) => `${p.port}/${p.protocol}`).join(", "),
-      COMPLETIONS: item.status?.succeeded !== undefined ? `${item.status.succeeded}/${item.spec?.completions || 1}` : undefined,
-      DURATION: getJobDuration(item.status?.startTime, item.status?.completionTime)
-    }));
+    const formattedItems: KubernetesItem[] = listObject.items.map((item: any) => {
+      let ready: string = "";
+
+      if (item instanceof k8s.V1Pod) {
+        // Ensure item is treated as a Pod
+        const pod = item
+        // Ensure `spec` and `containers` exist
+        const totalContainers = pod.spec?.containers?.length || 0;
+        const readyContainers = pod.status?.containerStatuses?.filter((c: k8s.V1ContainerStatus) => c.ready).length || 0;
+        ready = totalContainers > 0 ? `${readyContainers}/${totalContainers}` : "";
+      } else {
+        // For Deployments, StatefulSets, use replicas
+        ready = item?.status?.readyReplicas !== undefined && item?.status?.replicas !== undefined
+          ? `${item.status.readyReplicas}/${item.status.replicas}`
+          : "0/0";
+      }
+
+      return {
+        NAME: item.metadata?.name || "N/A",
+        READY: ready, // Correct READY value
+        STATUS: item.status?.phase || "Unknown",
+        RESTARTS: item.status?.containerStatuses
+          ? item.status.containerStatuses.reduce((sum: number, c: any) => sum + (c.restartCount || 0), 0)
+          : 0, // Ensure `reduce()` does not break if `containerStatuses` is undefined
+        AGE: item.metadata?.creationTimestamp ? getAge(item.metadata.creationTimestamp) : "N/A",
+        DATA: item.data ? Object.keys(item.data).length : -1,
+        AVAILABLE: item.status?.availableReplicas,
+        TYPE: item.spec?.type || (item.type ? item.type : undefined),
+        "CLUSTER-IP": item.spec?.clusterIP || "N/A",
+        PORTS: item.spec?.ports
+          ? item.spec.ports.map((p: any) => `${p.port}/${p.protocol}`).join(", ")
+          : "N/A", // Ensure PORTS does not break if undefined
+        COMPLETIONS: item.status?.succeeded !== undefined
+          ? `${item.status.succeeded}/${item.spec?.completions || 1}`
+          : undefined,
+        DURATION: getJobDuration(item.status?.startTime, item.status?.completionTime)
+      };
+    });
+
+
+    // Determine the relevant fields based on resource type
+    let fields = resourceFields[getKubeResourceSchema(resourceType).kind] || ["NAME", "AGE"];
 
     // **Filter out columns where all values are empty or undefined**
     fields = fields.filter(field =>
-      formattedItems.some(item => item[field as keyof KubernetesItem] !== undefined && item[field as keyof KubernetesItem] !== "")
+      formattedItems.some(item => item[field as keyof KubernetesItem] !== undefined && item[field as keyof KubernetesItem] !== "" && item[field as keyof KubernetesItem] !== -1)
     );
 
-    // Generate Markdown Table dynamically
-    let markdownTable = [
-      `| ${fields.join(" | ")} |`,
-      `| ${fields.map(() => "---").join(" | ")} |`,
-      ...formattedItems.map(item =>
-        `| ${fields.map(field => item[field as keyof KubernetesItem] ?? "").join(" | ")} |`
-      )
-    ].join("\n");
+    let markdownTable = `No resources(${resourceType}) found in ${namespace} namespace.`
+    if (listObject.items && listObject.items.length > 0) {
+      // Generate Markdown Table dynamically
+      markdownTable = [
+        `| ${fields.join(" | ")} |`,
+        `| ${fields.map(() => "---").join(" | ")} |`,
+        ...formattedItems.map(item =>
+          `| ${fields.map(field => item[field as keyof KubernetesItem] ?? "").join(" | ")} |`
+        )
+      ].join("\n").trim();
 
-    if (listObject.items && listObject.items.length == 0) {
-      markdownTable = `No resources(${resourceType}) found in ${namespace} namespace.`
     }
+
     return {
       content: [{
         type: "text",
@@ -166,15 +196,20 @@ function getAge(creationTimestamp: string): string {
   const currentTime = new Date();
   const createdAt = new Date(creationTimestamp);
   const diffInMs = currentTime.getTime() - createdAt.getTime();
-  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-
-  if (diffInHours < 24) {
-    return `${diffInHours}h`;
-  }
-
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+  const diffInHours = Math.floor(diffInMinutes / 60);
   const diffInDays = Math.floor(diffInHours / 24);
-  return `${diffInDays}d`;
+  const remainingHours = diffInHours % 24;
+
+  if (diffInHours < 1) {
+    return `${diffInMinutes}m`;
+  } else if (diffInHours < 24) {
+    return `${diffInHours}h${diffInMinutes % 60}m`;
+  } else {
+    return `${diffInDays}d${remainingHours}h`;
+  }
 }
+
 
 // Retrieve a specific Kubernetes resource
 export async function getResource(request: CallToolRequest): Promise<CallToolResult> {
