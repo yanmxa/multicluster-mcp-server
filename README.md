@@ -8,6 +8,7 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 
   - Manage Kubernetes resources such as Pods, Deployments, and Services
   - Access and retrieve logs for Kubernetes resources (Pods, Containers)
+  - Use fewer resources and tool calls to accomplish operations on a Kubernetes cluster
   
 - **Multi-Cluster Management** (via Open Cluster Management):
 
@@ -63,7 +64,7 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 {
   "mcpServers": {
     "y": {
-      "command": "/path/to/y/build/index.js"
+      "command": "/path/to/multicluster-mcp-server/build/index.js"
     }
   }
 }

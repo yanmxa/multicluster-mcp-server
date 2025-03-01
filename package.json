@@ -1,11 +1,10 @@
 {
-  "name": "y",
+  "name": "multicluster-mcp-server",
   "version": "0.1.0",
   "description": "A Model Context Protocol server",
   "private": true,
-  "type": "module",
   "bin": {
-    "y": "./build/index.js"
+    "multicluster-mcp-server": "./build/index.js"
   },
   "files": [
     "build"
@@ -17,6 +16,7 @@
     "inspector": "npx @modelcontextprotocol/inspector build/index.js"
   },
   "dependencies": {
+    "@kubernetes/client-node": "^1.0.0",
     "@modelcontextprotocol/sdk": "0.6.0"
   },
   "devDependencies": {
