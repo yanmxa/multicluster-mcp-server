@@ -24,6 +24,9 @@ import {
 import { toolCallHandlers } from "./tools/call";
 import { KUBE_TOOLS } from "./tools/list";
 
+// Suppress all warnings globally
+process.removeAllListeners('warning');
+
 /**
  * Create an MCP server with capabilities for resources (to list/read notes),
  * tools (to create new notes), and prompts (to summarize notes).
