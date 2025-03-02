@@ -2,43 +2,26 @@
 
 The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (GenAI) systems to interact with multiple Kubernetes clusters through the Model Context Protocol (MCP). It facilitates comprehensive operations on Kubernetes resources, streamlined multi-cluster management, and delivered interactive cluster observability.
 
-## Features
+## **🚀 Features**
 
-- **Kubernetes Cluster Operations**:
+### 🛠 Kubernetes Cluster Operations
 
-  - Manage Kubernetes resources such as Pods, Deployments, and Services
-  - Access and retrieve logs for Kubernetes resources (Pods, Containers)
-  - Use fewer resources and tool calls to accomplish operations on a Kubernetes cluster
-  
-- **Multi-Cluster Management** (via Open Cluster Management):
+✅ Fully supports `kubectl` to interact with your cluster  
+✅ Create, update, and list resources (Deployments, Pods, Services, etc.)  
 
-  - Join and detach clusters within the multi-cluster environment
-  - Interact with multi-cluster APIs, including Managed Clusters, Policies, Add-ons, and more
-  
-- **Cluster Observability**:
+### 🌍 Multi-Cluster Management** *(via Open Cluster Management)
 
-  - Retrieve and analyze metrics, logs, and alerts from integrated clusters
+❌ Access and manage multiple clusters seamlessly  
+❌ Interact with multi-cluster APIs, including Managed Clusters, Policies, Add-ons, and more  
 
-## Features
+### 📊 Cluster Observability
 
-### Resources
-- List and access notes via `note://` URIs
-- Each note has a title, content and metadata
-- Plain text mime type for simple content access
-
-### Tools
-- `create_note` - Create new text notes
-  - Takes title and content as required parameters
-  - Stores note in server state
-
-### Prompts
-- `summarize_notes` - Generate a summary of all stored notes
-  - Includes all note contents as embedded resources
-  - Returns structured prompt for LLM summarization
+❌ Retrieve and analyze **metrics, logs, and alerts** from integrated clusters  
 
 ## Development
 
 Install dependencies:
+
 ```bash
 npm install
 ```
@@ -53,7 +36,9 @@ For development with auto-rebuild:
 npm run watch
 ```
 
-## Installation
+## **🛠 Installation**  
+
+📌 **Note:** Ensure `kubectl` is installed. By default, the tool uses the **`KUBECONFIG`** environment variable to access the cluster. In a multi-cluster setup, it treats the configured cluster as the **hub cluster**, accessing others through it.
 
 To use with Claude Desktop, add the server config:
 
