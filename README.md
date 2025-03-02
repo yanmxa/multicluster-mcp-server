@@ -18,24 +18,6 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 
 ❌ Retrieve and analyze **metrics, logs, and alerts** from integrated clusters  
 
-## Development
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Build the server:
-```bash
-npm run build
-```
-
-For development with auto-rebuild:
-```bash
-npm run watch
-```
-
 ## **🛠 Installation**  
 
 📌 **Note:** Ensure `kubectl` is installed. By default, the tool uses the **`KUBECONFIG`** environment variable to access the cluster. In a multi-cluster setup, it treats the configured cluster as the **hub cluster**, accessing others through it.
@@ -54,16 +36,6 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
   }
 }
 ```
-
-### Debugging
-
-Since MCP servers communicate over stdio, debugging can be challenging. We recommend using the [MCP Inspector](https://github.com/modelcontextprotocol/inspector), which is available as a package script:
-
-```bash
-npm run inspector
-```
-
-The Inspector will provide a URL to access debugging tools in your browser.
 
 ## License
 
