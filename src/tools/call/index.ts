@@ -3,8 +3,9 @@ import {
   CallToolResult,
   CallToolRequest,
 } from "@modelcontextprotocol/sdk/types";
-import { KUBECTL_EXECUTOR } from "../list";
+import { KUBECTL_EXECUTOR, LIST_CLUSTERS, APPLY_SA_WITH_ADMIN } from "../list";
 import { executeKubectlCommand } from "./kubectl"
+import { listClusters, applyServiceAccountWithAdmin } from "./multiple-cluster";
 
 export const toolCallHandlers: Map<string, (request: CallToolRequest) => Promise<CallToolResult>> = new Map();
 // toolCallHandlers.set(LIST_RESOURCE.name, listResources)
@@ -15,3 +16,6 @@ export const toolCallHandlers: Map<string, (request: CallToolRequest) => Promise
 // toolCallHandlers.set(LOG_RESOURCE.name, logResource)
 
 toolCallHandlers.set(KUBECTL_EXECUTOR.name, executeKubectlCommand)
+toolCallHandlers.set(LIST_CLUSTERS.name, listClusters)
+toolCallHandlers.set(APPLY_SA_WITH_ADMIN.name, applyServiceAccountWithAdmin)
+

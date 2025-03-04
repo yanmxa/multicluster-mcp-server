@@ -4,6 +4,7 @@ import { Writable } from 'node:stream';
 import { CallToolRequest, CallToolRequestSchema, CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { exec } from "child_process";
 import util from "util";
+import { getKubeconfig } from "./multiple-cluster";
 
 
 const execPromise = util.promisify(exec);
@@ -19,18 +20,22 @@ export async function executeKubectlCommand(request: CallToolRequest): Promise<C
     command: string;
     cluster?: string;
   };
-
+  // console.log("command", command)
+  // console.log("cluster", cluster)
   try {
     if (typeof command !== "string" || !isValidKubectlCommand(command)) {
       throw new Error("Invalid command: Only 'kubectl' commands are allowed.");
     }
 
-    // Append cluster context if provided
-    // const finalCommand = cluster ? `${command} --context=${cluster}` : command;
-    // console.log(`Executing: ${finalCommand}`);
+    let finalCommand = command
+    if (cluster) {
+      const kubeconfigFile = getKubeconfig(cluster)
+      finalCommand = `${command} --kubeconfig=${kubeconfigFile}`
+    }
+    // console.log(`the finanl command ${finalCommand}`)
 
     // Prepare environment variables
-    const { stdout, stderr } = await execPromise(command, {
+    const { stdout, stderr } = await execPromise(finalCommand, {
       env: {
         ...process.env,
       },
@@ -57,3 +62,19 @@ export async function executeKubectlCommand(request: CallToolRequest): Promise<C
     } as CallToolResult;
   }
 }
+
+
+
+async function main() {
+  const result = await executeKubectlCommand({
+    params: {
+      name: "command", arguments: {
+        command: "kubectl get pods -n open-cluster-management-agent", cluster: "cluster1"
+      }
+    }, method: "tools/call",
+  }); // Now resolves to string[]
+  console.log(result);
+}
+
+// main();
+// npx ts-node kubectl.ts
