@@ -24,7 +24,8 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 <details>
 <summary>Mutiple Kubernetes Operations</summary>
 
-[![asciicast](https://asciinema.org/a/706281.svg)](https://asciinema.org/a/706281)
+[![Watch the demo](https://asciinema.org/a/706281.svg)](https://asciinema.org/a/706281)
+
 </details>
 
 ❌ Interact with multi-cluster APIs, including Managed Clusters, Policies, Add-ons, and more  
