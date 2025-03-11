@@ -232,14 +232,14 @@ export async function applyServiceAccountWithAdmin(request: CallToolRequest): Pr
   }
 }
 
-export function getKubeconfig(namespace: string): string {
+export function getKubeConfig(namespace: string): string {
   return `/tmp/${multiClusterMCPServer}.${namespace}`
 }
 
 // the secret name is "multicluster-mcp-server", namespace is the cluster name
 export async function createKubeconfigFile(secretName: string, namespace: string): Promise<string> {
   try {
-    const outputPath = getKubeconfig(namespace)
+    const outputPath = getKubeConfig(namespace)
     // Step 1: Retrieve the Secret
     const coreApi = kc.makeApiClient(k8s.CoreV1Api);
     const response = await coreApi.readNamespacedSecret({ name: secretName, namespace: namespace });

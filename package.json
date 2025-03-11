@@ -2,7 +2,7 @@
   "name": "multicluster-mcp-server",
   "version": "0.1.0",
   "description": "A Model Context Protocol server",
-  "private": true,
+  "private": false, 
   "bin": {
     "multicluster-mcp-server": "./build/index.js"
   },

@@ -1,8 +1,8 @@
 import { Tool } from "@modelcontextprotocol/sdk/types";
 
 export const LIST_CLUSTERS: Tool = {
-  name: "list_clusters",
-  description: "Retrieves a list of available Kubernetes clusters (also known as managed or spoke clusters).",
+  name: "clusters",
+  description: "Retrieves a list of Kubernetes clusters (also known as managed clusters or spoke clusters).",
   inputSchema: {
     type: "object",
     properties: {},
@@ -15,8 +15,8 @@ export const LIST_CLUSTERS: Tool = {
 };
 
 export const APPLY_SA_WITH_ADMIN: Tool = {
-  name: "connect_cluster_with_admin",
-  description: "Creates a ServiceAccount, generates a kubeconfig for cluster authentication, and binds it to the cluster-admin ClusterRole in the specified cluster.",
+  name: "connect_cluster_via_admin",
+  description: "Generates the KUBECONFIG for the cluster using the ServiceAccount and binds it to the cluster-admin role.",
   inputSchema: {
     type: "object",
     properties: {

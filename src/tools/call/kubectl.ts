@@ -4,7 +4,7 @@ import { Writable } from 'node:stream';
 import { CallToolRequest, CallToolRequestSchema, CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { exec } from "child_process";
 import util from "util";
-import { getKubeconfig } from "./multiple-cluster";
+import { getKubeConfig } from "./multiple-cluster";
 
 
 const execPromise = util.promisify(exec);
@@ -13,6 +13,12 @@ const execPromise = util.promisify(exec);
 function isValidKubectlCommand(command: string): boolean {
   return command.trim().startsWith("kubectl ");
 }
+import { existsSync } from 'fs';
+import { error } from "node:console";
+function validateKubeConfig(kubeconfigFile: string) {
+  return existsSync(kubeconfigFile);
+}
+
 
 // Shell Executor for Kubernetes (`kubectl` only)
 export async function executeKubectlCommand(request: CallToolRequest): Promise<CallToolResult> {
@@ -28,11 +34,14 @@ export async function executeKubectlCommand(request: CallToolRequest): Promise<C
     }
 
     let finalCommand = command
-    if (cluster) {
-      const kubeconfigFile = getKubeconfig(cluster)
-      finalCommand = `${command} --kubeconfig=${kubeconfigFile}`
+    if (!command.includes('--kubeconfig') && cluster) {
+      const kubeConfigFile = getKubeConfig(cluster)
+      if (validateKubeConfig(kubeConfigFile)) {
+        finalCommand = `${command} --kubeconfig=${kubeConfigFile}`;
+      } else {
+        throw error(`KUBECONFIG for cluster ${cluster} does not exist.`)
+      }
     }
-    // console.log(`the finanl command ${finalCommand}`)
 
     // Prepare environment variables
     const { stdout, stderr } = await execPromise(finalCommand, {
