@@ -92,7 +92,10 @@ export async function applyServiceAccountWithClusterRole(request: CallToolReques
     console.warn("patched mangedserviceaccount with empty response")
   }
 
-  const errMessage = await createKubeconfigFile(multiClusterMCPServer, cluster)
+  // list all the clusters
+  const _ = listClusters({ params: { name: "list_clusters", arguments: {} }, method: "tools/call" })
+
+  const errMessage = await createKubeConfigFile(multiClusterMCPServer, cluster)
   if (errMessage) {
     console.warn(errMessage)
   }
@@ -175,7 +178,8 @@ export async function applyServiceAccountWithAdmin(request: CallToolRequest): Pr
     console.warn("patched mangedserviceaccount with empty response")
   }
 
-  const errMessage = await createKubeconfigFile(multiClusterMCPServer, cluster)
+  const _ = listClusters({ params: { name: "list_clusters", arguments: {} }, method: "tools/call" })
+  const errMessage = await createKubeConfigFile(multiClusterMCPServer, cluster)
   if (errMessage) {
     console.warn(errMessage)
   }
@@ -237,7 +241,7 @@ export function getKubeConfig(namespace: string): string {
 }
 
 // the secret name is "multicluster-mcp-server", namespace is the cluster name
-export async function createKubeconfigFile(secretName: string, namespace: string): Promise<string> {
+export async function createKubeConfigFile(secretName: string, namespace: string): Promise<string> {
   try {
     const outputPath = getKubeConfig(namespace)
     // Step 1: Retrieve the Secret
@@ -255,8 +259,7 @@ export async function createKubeconfigFile(secretName: string, namespace: string
     const server = clusterToServerMap.get(namespace)
 
     if (!server) {
-      console.error("No current cluster server URL found in kubeconfig.");
-      return "No current cluster server URL found in kubeconfig."
+      return "No current cluster server URL found in the clusters"
     }
 
     // Step 3: Construct the Kubeconfig YAML String
