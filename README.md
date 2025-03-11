@@ -8,7 +8,9 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 
 ✅ Fully supports `kubectl` to interact with your cluster  
 
-✅ Create, update, and list resources (Deployments, Pods, Services, etc.) 
+✅ Create, update, and list resources (Deployments, Pods, Services, etc.)
+
+❌ Create, update, and retrieve resources based on the CRD (the tool retrieves and compresses the CRD, preserving all information while reducing tokens for the LLM).
 
 <details>
 <summary>Kubernetes Operations</summary>
@@ -16,6 +18,10 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 ![alt text](images/kubernetes-operation.png)
 
 </details>
+
+### 📊 Cluster Observability
+
+❌ Retrieve and analyze **metrics, logs, and alerts** from integrated clusters  
 
 ### 🌍 Multi-Cluster Management (via Open Cluster Management)
 
@@ -29,10 +35,6 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 </details>
 
 ❌ Interact with multi-cluster APIs, including Managed Clusters, Policies, Add-ons, and more  
-
-### 📊 Cluster Observability
-
-❌ Retrieve and analyze **metrics, logs, and alerts** from integrated clusters  
 
 ## **🛠 Installation**  
 
