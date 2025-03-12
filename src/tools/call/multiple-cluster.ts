@@ -2,6 +2,8 @@ import * as k8s from '@kubernetes/client-node';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CallToolRequest, CallToolRequestSchema, CallToolResult } from "@modelcontextprotocol/sdk/types";
+import { isErrored } from 'stream';
+import { error } from 'console';
 
 
 const kc = new k8s.KubeConfig();
@@ -173,15 +175,21 @@ export async function applyServiceAccountWithAdmin(request: CallToolRequest): Pr
       rotation: {},
     },
   }
-  const response = await client.patch<k8s.KubernetesObject>(msa, undefined, undefined, "multicluster-mcp-server", true, k8s.PatchStrategy.ServerSideApply)
-  if (!response) {
-    console.warn("patched mangedserviceaccount with empty response")
-  }
 
-  const _ = listClusters({ params: { name: "list_clusters", arguments: {} }, method: "tools/call" })
-  const errMessage = await createKubeConfigFile(multiClusterMCPServer, cluster)
-  if (errMessage) {
-    console.warn(errMessage)
+  const [response, listResponse] = await Promise.all([
+    client.patch<k8s.KubernetesObject>(
+      msa,
+      undefined,
+      undefined,
+      "multicluster-mcp-server",
+      true,
+      k8s.PatchStrategy.ServerSideApply
+    ),
+    listClusters({ params: { name: "list_clusters", arguments: {} }, method: "tools/call" })
+  ]);
+
+  if (!response) {
+    console.warn("Patched ManagedServiceAccount with empty response");
   }
 
   const clusterRoleBinding = {
@@ -221,23 +229,110 @@ export async function applyServiceAccountWithAdmin(request: CallToolRequest): Pr
     },
   }
 
+  let result = `Successfully created ServiceAccount ${multiClusterMCPServer} and assigned the cluster-admin ClusterRole to it on cluster ${cluster}`;
+  let isErrored = false
   try {
-    const manifestsResponse = await client.patch<k8s.KubernetesObject>(permission, undefined, undefined, "multicluster-mcp-server", true, k8s.PatchStrategy.ServerSideApply);
+    const [tokenSecret, manifestsResponse] = await Promise.all([
+      getSecretWithRetry(cluster, multiClusterMCPServer),
+      // createKubeConfigFile(multiClusterMCPServer, cluster),
+      client.patch<k8s.KubernetesObject>(permission, undefined, undefined, "multicluster-mcp-server", true, k8s.PatchStrategy.ServerSideApply)
+    ]);
+
+    if (typeof tokenSecret == 'string') {
+      throw error(tokenSecret)
+    } else {
+      const errMessage = generateKubeConfig(tokenSecret)
+      if (errMessage) {
+        throw error(errMessage)
+      }
+    }
   } catch (error: any) {
-    console.error(`❌ Failed to update ManifestWork:`, error);
-    throw error;
+    isErrored = true
+    result = `Failed to generate KUBECONFIG for ${cluster}: ${error}`
   }
   // return manifestsResponse
   return {
     content: [{
       type: "text",
-      text: `Created ServiceAccount ${multiClusterMCPServer} and granted ClusterRole cluster-admin on cluster ${cluster} successfully!`,
+      text: result
     }],
+    isErrored: isErrored
   }
 }
 
 export function getKubeConfig(namespace: string): string {
   return `/tmp/${multiClusterMCPServer}.${namespace}`
+}
+
+
+async function getSecretWithRetry(namespace: string, secretName: string, retries: number = 3, delay: number = 5000): Promise<string | k8s.V1Secret> {
+  const coreApi = kc.makeApiClient(k8s.CoreV1Api);
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await coreApi.readNamespacedSecret({ name: secretName, namespace: namespace });
+      const secretData = response.data;
+
+      if (!secretData || !secretData["ca.crt"] || !secretData["token"]) {
+        return `Secret ${secretName} in namespace ${namespace} does not contain a valid kubeconfig.`;
+      }
+
+      return response; // Return the secret data if it is valid
+    } catch (error) {
+      // If the secret is not found, retry
+      if (attempt < retries) {
+        console.warn(`Attempt ${attempt} failed: Secret not found. Retrying in ${delay / 1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay)); // Delay before retrying
+      } else {
+        return `Failed to retrieve Secret ${secretName} after ${retries} attempts.`;
+      }
+    }
+  }
+  return `Failed to retrieve token Secret ${namespace}/${secretName} after ${retries} attempts.`
+}
+
+function generateKubeConfig(secret: k8s.V1Secret): string {
+  const secretData = secret.data;
+  const cluster = secret.metadata?.namespace || ""
+  if (!secretData || !secretData["ca.crt"] || !secretData["token"]) {
+    return `Secret ${secret.metadata?.namespace}/ ${secret.metadata?.name} contain a valid token or ca.crt.`;
+  }
+
+  const caCrt = secretData["ca.crt"];
+  // Step 2: Decode Secret Data (Base64 -> String)
+  const token = Buffer.from(secretData["token"], "base64").toString("utf-8");
+  const server = clusterToServerMap.get(cluster)
+
+  if (!server) {
+    return "No current cluster server URL found in the clusters"
+  }
+
+  // Step 3: Construct the Kubeconfig YAML String
+  const kubeconfigYaml = `apiVersion: v1
+kind: Config
+clusters:
+- name: cluster
+  cluster:
+    certificate-authority-data: ${caCrt}
+    server: ${server}
+contexts:
+- name: context
+  context:
+    cluster: cluster
+    user: user
+    namespace: ${cluster}
+current-context: context
+users:
+- name: user
+  user:
+    token: ${token}
+`;
+
+  // Step 4: Write to kubeconfig.yaml File
+  const fullPath = path.resolve(getKubeConfig(cluster));
+  fs.writeFileSync(fullPath, kubeconfigYaml);
+  // console.log(`Kubeconfig file created: ${fullPath}`);
+  return "";
 }
 
 // the secret name is "multicluster-mcp-server", namespace is the cluster name
@@ -248,7 +343,6 @@ export async function createKubeConfigFile(secretName: string, namespace: string
     const coreApi = kc.makeApiClient(k8s.CoreV1Api);
     const response = await coreApi.readNamespacedSecret({ name: secretName, namespace: namespace });
     const secretData = response.data;
-
     if (!secretData || !secretData["ca.crt"] || !secretData["token"]) {
       return `Secret ${secretName} in namespace ${namespace} does not contain a valid kubeconfig.`;
     }
@@ -286,7 +380,7 @@ users:
     // Step 4: Write to kubeconfig.yaml File
     const fullPath = path.resolve(outputPath);
     fs.writeFileSync(fullPath, kubeconfigYaml);
-    console.log(`✅ Kubeconfig file created: ${fullPath}`);
+    // console.log(`Kubeconfig file created: ${fullPath}`);
     return "";
   } catch (error) {
     return `Error creating Kubeconfig file from Secret ${secretName}: ${error}`;
@@ -294,14 +388,14 @@ users:
 }
 
 
-async function main() {
-  const clusters = await listClusters({ params: { name: "list_clusters", arguments: {} }, method: "tools/call" }); // Now resolves to string[]
-  console.log(clusters);
-  const results = await Promise.all(
-    Array.from(clusterToServerMap.keys()).map((cluster) => applyServiceAccountWithAdmin({ params: { name: "list_clusters", arguments: { cluster: cluster } }, method: "tools/call" }))
-  );
-  console.log("Permission Result:", results);
-}
+// async function main() {
+//   const clusters = await listClusters({ params: { name: "list_clusters", arguments: {} }, method: "tools/call" }); // Now resolves to string[]
+//   console.log(clusters);
+//   const results = await Promise.all(
+//     Array.from(clusterToServerMap.keys()).map((cluster) => applyServiceAccountWithAdmin({ params: { name: "list_clusters", arguments: { cluster: cluster } }, method: "tools/call" }))
+//   );
+//   console.log("Permission Result:", results);
+// }
 
 // main();
 // npx ts-node test-listClusters.ts

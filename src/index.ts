@@ -85,7 +85,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
   if (!handler) {
     throw new Error("Unknown tool");
   }
-  return await handler(request)
+  const result = await handler(request)
+  return result
 });
 
 /**
