@@ -51,10 +51,6 @@ export async function executeKubectlCommand(request: CallToolRequest): Promise<C
       timeout: 10000
     });
 
-    if (stderr) {
-      console.warn("Warning:", stderr);
-    }
-
     return {
       content: [{
         type: "text",
