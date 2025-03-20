@@ -34,7 +34,7 @@ export async function executeKubectlCommand(request: CallToolRequest): Promise<C
     }
 
     let finalCommand = command
-    if (!command.includes('--kubeconfig') && cluster) {
+    if (!command.includes('--kubeconfig') && cluster && cluster != "default") {
       const kubeConfigFile = getKubeConfig(cluster)
       if (validateKubeConfig(kubeConfigFile)) {
         finalCommand = `${command} --kubeconfig=${kubeConfigFile}`;

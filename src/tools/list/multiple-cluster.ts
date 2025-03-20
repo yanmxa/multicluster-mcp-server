@@ -57,3 +57,28 @@ export const APPLY_SA_WITH_CLUSTER_ROLE: Tool = {
     description: "The result message indicating whether the operation was successful."
   }
 };
+
+
+export const YAML_APPLIER: Tool = {
+  name: "yaml_applier",
+  description: "Applies a given YAML configuration to a specified Kubernetes cluster.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      cluster: {
+        type: "string",
+        description: "The target cluster where the YAML should be applied. Defaults to 'default' if not specified.",
+        nullable: true
+      },
+      yaml: {
+        type: "string",
+        description: "The YAML configuration to be applied as a string.",
+      }
+    },
+    required: ["yaml"]
+  },
+  outputSchema: {
+    type: "string",
+    description: "A message indicating whether the YAML was applied successfully."
+  }
+};
