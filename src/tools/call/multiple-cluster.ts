@@ -389,7 +389,7 @@ users:
 
 
 // async function main() {
-//   const clusters = await listClusters({ params: { name: "list_clusters", arguments: {} }, method: "tools/call" }); // Now resolves to string[]
+//   const clusters = await listClusters({ params: { name: "clusters", arguments: {} }, method: "tools/call" }); // Now resolves to string[]
 //   console.log(clusters);
 //   const results = await Promise.all(
 //     Array.from(clusterToServerMap.keys()).map((cluster) => applyServiceAccountWithAdmin({ params: { name: "list_clusters", arguments: { cluster: cluster } }, method: "tools/call" }))
@@ -398,4 +398,4 @@ users:
 // }
 
 // main();
-// npx ts-node test-listClusters.ts
+// // npx ts - node test - listClusters.ts
