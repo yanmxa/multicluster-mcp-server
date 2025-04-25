@@ -6,56 +6,50 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 
 ## **🚀 Features**
 
-### 🛠 Kubernetes Cluster Operations
+### 🛠️ MCP Tools - Kubernetes Cluster Awareness
+  
+- ✅ Retrieve resources from the **hub cluster** (current context)  
+- ✅ Retrieve resources from the **managed clusters**  
+- ✅ Connect to a **managed cluster** using a specified `ClusterRole`
+- ✅ Access resources across multiple Kubernetes clusters(via Open Cluster Management)
+- ❌ Retrieve and analyze **metrics, logs, and alerts** from integrated clusters  
+- ❌ Interact with multi-cluster APIs, including Managed Clusters, Policies, Add-ons, and more
 
-✅ Fully supports `kubectl` to interact with your cluster  
+  ![alt text](images/tools.png)
+  <details>
+  <summary>Mutiple Kubernetes Clusters Operations</summary>
 
-✅ Create, update, and list resources (Deployments, Pods, Services, etc.)
+  [![Watch the demo](https://asciinema.org/a/706281.svg)](https://asciinema.org/a/706281)
 
-❌ Create, update, and retrieve resources based on the CRD (the tool retrieves and compresses the CRD, preserving all information while reducing tokens for the LLM).
+  </details>
 
-<details>
-<summary>Kubernetes Operations</summary>
+### 📦 Prompt Templates for Open Cluster Management *(Planning)*
 
-![alt text](images/kubernetes-operation.png)
+- Provide reusable prompt templates tailored for OCM tasks, streamlining agent interaction and automation
 
-</details>
+### 📚 MCP Resources for Open Cluster Management *(Planning)*
 
-### 📊 Cluster Observability
+- Reference official OCM documentation and related resources to support development and integration
 
-❌ Retrieve and analyze **metrics, logs, and alerts** from integrated clusters  
+### 📌 How to Use
 
-### 🌍 Multi-Cluster Management (via Open Cluster Management)
-
-✅ Access and manage resources across multiple Kubernetes clusters
-
-<details>
-<summary>Mutiple Kubernetes Operations</summary>
-
-[![Watch the demo](https://asciinema.org/a/706281.svg)](https://asciinema.org/a/706281)
-
-</details>
-
-❌ Interact with multi-cluster APIs, including Managed Clusters, Policies, Add-ons, and more  
-
-## **🛠 Installation**  
-
-📌 **Note:** Ensure `kubectl` is installed. By default, the tool uses the **`KUBECONFIG`** environment variable to access the cluster. In a multi-cluster setup, it treats the configured cluster as the **hub cluster**, accessing others through it.
-
-To use with Claude Desktop, add the server config:
-
-On MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+Configure the server using the following snippet:
 
 ```json
 {
   "mcpServers": {
-    "y": {
-      "command": "/path/to/multicluster-mcp-server/build/index.js"
+    "multicluster-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "multicluster-mcp-server@latest"
+      ]
     }
   }
 }
 ```
+
+**Note:** Ensure `kubectl` is installed. By default, the tool uses the **`KUBECONFIG`** environment variable to access the cluster. In a multi-cluster setup, it treats the configured cluster as the **hub cluster**, accessing others through it.
 
 ## License
 

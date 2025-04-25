@@ -21,8 +21,8 @@ import {
   CallToolResult,
   CallToolRequest,
 } from "@modelcontextprotocol/sdk/types.js";
-import { toolCallHandlers } from "./tools/call";
-import { KUBE_TOOLS } from "./tools/list";
+import { toolCallHandlers, KUBE_TOOLS } from "./tools";
+
 
 // Suppress all warnings globally
 process.removeAllListeners('warning');
@@ -33,7 +33,7 @@ process.removeAllListeners('warning');
  */
 const server = new Server(
   {
-    name: "multicluster-mcp-server",
+    name: "clusters-mcp-server",
     version: "0.1.0",
   },
   {

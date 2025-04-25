@@ -1,10 +1,9 @@
 
-import k8s, { KubernetesObjectApi, KubeConfig, KubernetesListObject, KubernetesObject, Log, LogOptions, V1APIGroup } from "@kubernetes/client-node";
-import { Writable } from 'node:stream';
 import { CallToolRequest, CallToolRequestSchema, CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { exec } from "child_process";
 import util from "util";
-import { getKubeConfig } from "./multiple-cluster";
+import * as fs from 'fs';
+import { getKubeConfig } from "./connection";
 
 
 const execPromise = util.promisify(exec);
@@ -21,25 +20,48 @@ function validateKubeConfig(kubeconfigFile: string) {
 
 
 // Shell Executor for Kubernetes (`kubectl` only)
-export async function executeKubectlCommand(request: CallToolRequest): Promise<CallToolResult> {
-  const { command, cluster } = request.params.arguments as {
-    command: string;
+export async function kubeExecutor(request: CallToolRequest): Promise<CallToolResult> {
+  const { command, cluster, yaml } = request.params.arguments as {
+    command?: string;
+    yaml?: string;
     cluster?: string;
   };
-  // console.log("command", command)
-  // console.log("cluster", cluster)
   try {
-    if (typeof command !== "string" || !isValidKubectlCommand(command)) {
-      throw new Error("Invalid command: Only 'kubectl' commands are allowed.");
+    if (!command && !yaml) {
+      throw new Error("Either 'command' or 'yaml' must be provided.");
+    }
+    if (command && yaml) {
+      throw new Error("Provide only one of 'command' or 'yaml', not both.");
     }
 
-    let finalCommand = command
-    if (!command.includes('--kubeconfig') && cluster && cluster != "default") {
-      const kubeConfigFile = getKubeConfig(cluster)
-      if (validateKubeConfig(kubeConfigFile)) {
-        finalCommand = `${command} --kubeconfig=${kubeConfigFile}`;
-      } else {
-        throw error(`KUBECONFIG for cluster ${cluster} does not exist.`)
+    const targetCluster = cluster && cluster !== "default" ? cluster : undefined;
+    let kubeConfigFile: string | undefined;
+    if (targetCluster) {
+      kubeConfigFile = getKubeConfig(targetCluster);
+      if (!validateKubeConfig(kubeConfigFile)) {
+        throw new Error(`KUBECONFIG for cluster '${targetCluster}' does not exist.`);
+      }
+    }
+
+    let finalCommand: string;
+
+    if (command) {
+      if (typeof command !== "string" || !isValidKubectlCommand(command)) {
+        throw new Error("Invalid command: Only 'kubectl' commands are allowed.");
+      }
+      finalCommand = targetCluster ? `${command} --kubeconfig=${kubeConfigFile}` : command;
+    } else {
+      // Handle YAML apply
+      if (typeof yaml !== "string" || !yaml.trim()) {
+        throw new Error("Invalid YAML content.");
+      }
+
+      const tempFilePath = "/tmp/acm-mcp-kubectl-temp.yaml";
+      await fs.promises.writeFile(tempFilePath, yaml);
+
+      finalCommand = `kubectl apply -f ${tempFilePath}`;
+      if (targetCluster) {
+        finalCommand += ` --kubeconfig=${kubeConfigFile}`;
       }
     }
 
@@ -54,32 +76,43 @@ export async function executeKubectlCommand(request: CallToolRequest): Promise<C
     return {
       content: [{
         type: "text",
-        text: stdout || stderr || "Command executed successfully, but no output returned."
+        text: stdout || stderr || "Run kube executor successfully, but no output returned."
       }],
     } as CallToolResult;
-  } catch (error: any) {
-    // console.warn("Warning:", error.message);
+  } catch (err: any) {
     return {
       content: [{
         type: "text",
-        text: `Error executing kubectl command: ${error.message}`
+        text: `Error running kube executor: ${err.message || err}`,
       }],
     } as CallToolResult;
   }
 }
 
+// async function main() {
+//   let result = await kubeExecutor({
+//     params: {
+//       name: "kubeExecutor", arguments: {
+//         command: "kubectl get pods -n open-cluster-management-agent", cluster: "hub1"
+//       }
+//     }, method: "tools/call",
+//   });
+//   console.log(result);
 
-
-async function main() {
-  const result = await executeKubectlCommand({
-    params: {
-      name: "command", arguments: {
-        command: "kubectl get pods -n open-cluster-management-agent", cluster: "cluster1"
-      }
-    }, method: "tools/call",
-  }); // Now resolves to string[]
-  console.log(result);
-}
+//   let create_result = await kubeExecutor({
+//     params: {
+//       name: "kubeExecutor",
+//       arguments: {
+//         yaml: `apiVersion: v1
+// kind: Namespace
+// metadata:
+//   name: my-namespace2`,
+//         cluster: "hub2",
+//       }
+//     }, method: "tools/call",
+//   });
+//   console.log(create_result);
+// }
 
 // main();
-// npx ts-node kubectl.ts
+// // npx ts-node ./src/tools/call/kubectl.ts
