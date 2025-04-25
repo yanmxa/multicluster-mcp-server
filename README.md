@@ -1,6 +1,6 @@
 [![MseeP Badge](https://mseep.net/pr/yanmxa-multicluster-mcp-server-badge.jpg)](https://mseep.ai/app/yanmxa-multicluster-mcp-server)
 
-# Multicluster MCP server
+# Multi-Cluster MCP server
 
 The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (GenAI) systems to interact with multiple Kubernetes clusters through the Model Context Protocol (MCP). It facilitates comprehensive operations on Kubernetes resources, streamlined multi-cluster management, and delivered interactive cluster observability.
 
