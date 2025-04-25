@@ -31,7 +31,7 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 
 - Reference official OCM documentation and related resources to support development and integration
 
-### 📌 How to Use
+### **📌 How to Use**
 
 Configure the server using the following snippet:
 
