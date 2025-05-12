@@ -1,9 +1,13 @@
 <!-- [![MseeP Badge](https://mseep.net/pr/yanmxa-multicluster-mcp-server-badge.jpg)](https://mseep.ai/app/yanmxa-multicluster-mcp-server) -->
 
-<a href="https://mseep.ai/app/yanmxa-multicluster-mcp-server" style="display:inline-block; width:260px; height:310px; overflow:hidden;">
-  <img src="https://mseep.net/pr/yanmxa-multicluster-mcp-server-badge.jpg" 
-       style="width:100%; height:auto; object-fit:cover; object-position:top;">
-</a>
+
+<div style="text-align: center;">
+  <a href="https://mseep.ai/app/yanmxa-multicluster-mcp-server" style="display:inline-block; width:100px; height:116px; overflow:hidden;">
+    <img src="https://mseep.net/pr/yanmxa-multicluster-mcp-server-badge.jpg" 
+         style="width:100%; height:auto; object-fit:cover; object-position:top;">
+  </a>
+</div>
+
 
 
 # Multi-Cluster MCP server
