@@ -39,15 +39,20 @@ The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (Ge
 
 ### **📌 How to Use**
 
+- Use with MCP Inspector
+
+```bash
+mcp dev ./src/multicluster_mcp_server/__main__.py 
+```
+
 Configure the server using the following snippet:
 
 ```json
 {
   "mcpServers": {
     "multicluster-mcp-server": {
-      "command": "npx",
+      "command": "uvx",
       "args": [
-        "-y",
         "multicluster-mcp-server@latest"
       ]
     }

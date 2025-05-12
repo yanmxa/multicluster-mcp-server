@@ -2,3 +2,7 @@ node_modules/
 build/
 *.log
 .env*
+.vscode
+.venv
+__pycache__
+dist
