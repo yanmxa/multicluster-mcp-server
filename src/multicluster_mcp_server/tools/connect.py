@@ -1,3 +1,5 @@
+from typing import Annotated, Optional
+from pydantic import Field
 import sys
 import os
 import base64
@@ -16,9 +18,8 @@ from multicluster_mcp_server.utils.logging_config import setup_logging
 # Disable warnings for unverified HTTPS requests
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-server_name = "multicluster-mcp-server"
+from multicluster_mcp_server.core.mcp_instance import mcp, server_name
 logger = setup_logging(server_name, level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO))
-
 
 def create_or_update_managed_service_account(cluster: str, mcp_server: str = server_name):
     config.load_kube_config()
@@ -218,6 +219,13 @@ users:
     except Exception as e:
         return f"Failed to write kubeconfig: {e}"
 
+@mcp.tool(description="Generates the 'KUBECONFIG' for the managed cluster and binds it to the specified ClusterRole (default: cluster-admin).")
+def connect_cluster(
+    cluster: Annotated[str, Field(description="The target cluster where the ServiceAccount will be created for the KUBECONFIG.")],
+    cluster_role: Annotated[str, Field(description="The ClusterRole defining permissions to access the cluster.")] = "cluster-admin",
+) -> Annotated[str, Field(description="A message indicating the kubeconfig file or failure of the operation.")]:
+    return setup_cluster_access(cluster, cluster_role=cluster_role)
+
 def setup_cluster_access(cluster: str, cluster_role: str = "cluster-admin", mcp_server: str = server_name):
     logger.debug(f"Setting up ManagedServiceAccount and RBAC for cluster: {cluster}")
     
@@ -251,5 +259,5 @@ def setup_cluster_access(cluster: str, cluster_role: str = "cluster-admin", mcp_
 
 # Example usage
 if __name__ == "__main__":
-    result = setup_cluster_access("hub1")
+    result = setup_cluster_access("hub2")
     print(result)

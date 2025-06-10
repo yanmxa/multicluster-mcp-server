@@ -1,3 +1,5 @@
+from typing import Annotated, Optional
+from pydantic import Field
 import os
 import subprocess
 import tempfile
@@ -16,8 +18,13 @@ def inject_kubeconfig(command: str, kubeconfig: str) -> str:
         return command
     return re.sub(r"^kubectl\b", f"kubectl --kubeconfig={kubeconfig}", command, count=1)
 
-
-def run_kube_executor(command: Optional[str] = None, yaml: Optional[str] = None, cluster: Optional[str] = None) -> dict:
+from multicluster_mcp_server.core.mcp_instance import mcp
+@mcp.tool(description="Securely run a kubectl command or apply YAML. Provide either 'command' or 'yaml'.")
+def kube_executor(
+    cluster: Annotated[str, Field(description="The cluster name in a multi-cluster environment. Defaults to the hub cluster.")] = "default",
+    command: Annotated[Optional[str], Field(description="The full kubectl command to execute. Must start with 'kubectl'.")] = None,
+    yaml: Annotated[Optional[str], Field(description="YAML configuration to apply, provided as a string.")] = None,
+) -> Annotated[str, Field(description="The execution result")]:
     try:
         if not command and not yaml:
             raise ValueError("Either 'command' or 'yaml' must be provided.")
@@ -59,16 +66,16 @@ def run_kube_executor(command: Optional[str] = None, yaml: Optional[str] = None,
 
 # Example usage
 if __name__ == "__main__":
-    result = run_kube_executor(command="kubectl get deploy/klusterlet-agent -n open-cluster-management-agent -oyaml", cluster="hub1")
+    result = kube_executor(command="kubectl get deploy/klusterlet-agent -n open-cluster-management-agent -oyaml", cluster="cluster1")
     print(result)
 
-    result = run_kube_executor(command="kubectl delete ns my-namespace2", cluster="hub2")
+    result = kube_executor(command="kubectl delete ns my-namespace2", cluster="cluster1")
     print(result)
 
-    create_ns = run_kube_executor(yaml="""
+    create_ns = kube_executor(yaml="""
 apiVersion: v1
 kind: Namespace
 metadata:
   name: my-namespace2
-""", cluster="hub2")
+""", cluster="cluster1")
     print(create_ns)

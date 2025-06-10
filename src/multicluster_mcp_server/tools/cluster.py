@@ -1,3 +1,5 @@
+from typing import Annotated, Optional
+from pydantic import Field
 import sys
 import os
 from kubernetes import config
@@ -12,7 +14,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from multicluster_mcp_server.tools.connect import setup_cluster_access
 from multicluster_mcp_server.utils.logging_config import setup_logging
 
-server_name = "multicluster-mcp-server"
+from multicluster_mcp_server.core.mcp_instance import mcp, server_name
 logger = setup_logging(server_name, level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO))
 
 # Global map to cache kubeconfigs: cluster_name -> kubeconfig string
@@ -24,7 +26,10 @@ def get_cluster_age(creation_timestamp: str) -> str:
     hours, remainder = divmod(delta.seconds, 3600)
     return f"{delta.days}d{hours:02}"
 
-def list_clusters(generate_kubeconfig = False) -> str:
+generate_kubeconfig = False
+
+@mcp.tool(description="Retrieves a list of Kubernetes clusters (also known as managed clusters or spoke clusters).")
+def clusters() -> Annotated[str, Field(description="The managed clusters, also known as spoke clusters.")]:
     config.load_kube_config()
     dyn_client = DynamicClient(ApiClient())
 
