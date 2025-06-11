@@ -5,6 +5,10 @@
 
 The **Multi-Cluster MCP Server** provides a robust gateway for Generative AI (GenAI) systems to interact with multiple Kubernetes clusters through the Model Context Protocol (MCP). It facilitates comprehensive operations on Kubernetes resources, streamlined multi-cluster management, and delivered interactive cluster observability.
 
+<a href="https://glama.ai/mcp/servers/@yanmxa/multicluster-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@yanmxa/multicluster-mcp-server/badge" alt="Multi-Cluster Server MCP server" />
+</a>
+
 ## **🚀 Features**
 
 ### 🛠️ MCP Tools - Kubernetes Cluster Awareness
