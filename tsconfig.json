@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
-    "moduleResolution": "Node",
+    "moduleResolution": "node",
     "outDir": "./build",
     "rootDir": "./src",
     "strict": true,
@@ -10,6 +10,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }
