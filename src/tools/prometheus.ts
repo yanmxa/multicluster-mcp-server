@@ -44,6 +44,7 @@ export const prometheusArgs = {
     .describe(
       "Target cluster name in a multi-cluster environment. Defaults to the hub cluster if not provided."
     )
+    .default("default")
     .optional(),
 
   start: z
@@ -65,12 +66,21 @@ export const prometheusArgs = {
     .describe(
       "(range only) Resolution step (e.g., '30s', '5m', '1h'). Choose appropriately to keep the sample count under 200."
     )
-    .default("5m"),
+    .optional(),
 };
 
 const prometheusCache = new Map<string, { url: string; token: string }>();
 
-export async function prometheus(params: {
+export async function prometheus({
+  ql,
+  data_type = "snapshot",
+  group_by = "pod",
+  unit = "auto",
+  cluster = "default",
+  start,
+  end,
+  step = "5m",
+}: {
   ql: string;
   data_type: "snapshot" | "range";
   group_by: string;
@@ -80,19 +90,10 @@ export async function prometheus(params: {
   end?: string;
   step?: string;
 }): Promise<CallToolResult> {
-  const {
-    ql,
-    data_type = "snapshot",
-    group_by = "",
-    unit = "auto",
-    cluster,
-    start,
-    end,
-    step = "5m",
-  } = params;
+
+  let responseData: any[] = [];
 
   try {
-
     const { url, token } = await getPrometheusURL(cluster);
 
     const headers = { Authorization: token };
@@ -100,7 +101,6 @@ export async function prometheus(params: {
 
     const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-    let responseData: any[] = [];
     if (data_type === "range") {
       const response = await axios.default.get(`${url}/api/v1/query_range`, {
         headers,
@@ -111,6 +111,7 @@ export async function prometheus(params: {
           step,
         },
         httpsAgent,
+        proxy: false,
       });
       responseData = response.data.data.result.map((series: any) => ({
         metric: series.metric,
@@ -120,19 +121,24 @@ export async function prometheus(params: {
         ]),
       }));
     } else {
+
       const response = await axios.default.get(`${url}/api/v1/query`, {
         headers,
         params: { query: ql },
         httpsAgent,
+        proxy: false,
       });
 
       responseData = response.data.data.result.map(
-        (entry: { metric: { [x: string]: any; }; value: (string | number)[]; }) => ({
-          [group_by]: entry.metric[group_by] || "value",
-          value: transformValue(entry.value[1], effectiveUnit),
-        }));
+        (entry: { metric: { [x: string]: any; }; value: (string | number)[]; }) => (
+          {
+            [group_by]: entry.metric[group_by] || "value",
+            value: transformValue(entry.value[1], effectiveUnit),
+          }
+        ));
     }
 
+    // console.warn(responseData)
     if (responseData.length === 0) {
       return {
         content: [{
@@ -148,21 +154,21 @@ export async function prometheus(params: {
     }
 
     return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          data: responseData,
-          type: data_type,
-          unit: effectiveUnit,
-        }),
-      }],
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            {
+              data: responseData,
+              type: data_type,
+              unit: effectiveUnit,
+            }),
+        }
+      ],
     };
-    // return {
-    //   data: responseData,
-    //   type: data_type,
-    //   unit: effectiveUnit,
-    // };
   } catch (err: any) {
+    console.error(responseData)
+    console.error(err)
     return {
       content: [{
         type: "text",
@@ -174,6 +180,7 @@ export async function prometheus(params: {
 
 export async function getPrometheusURL(cluster?: string): Promise<{ url: string; token: string }> {
   const cacheKey = cluster || "default";
+
   if (prometheusCache.has(cacheKey)) {
     return prometheusCache.get(cacheKey)!;
   }
@@ -234,35 +241,35 @@ function transformValue(value: string | number, unit: string): number {
   }
 }
 
-async function main() {
-  // let result = await getPrometheusURL();
+// async function main() {
+//   // let result = await getPrometheusURL();
 
-  // console.log(result);
+//   // console.log(result);
 
-  let res = await prometheus({
-    ql: "sum(container_memory_usage_bytes{namespace=\"open-cluster-management-agent\"}) by (pod)",
-    data_type: "snapshot",
-    group_by: "pod",
-    unit: "MiB",
-    cluster: "cluster2",
-    // start?: string;
-    // end?: string;
-    // step?: string;
-  })
-  console.log(res)
+//   let res = await prometheus({
+//     ql: "sum(container_memory_usage_bytes{namespace=\"open-cluster-management-agent\"}) by (pod)",
+//     data_type: "snapshot",
+//     group_by: "pod",
+//     unit: "MiB",
+//     cluster: "cluster2",
+//     // start?: string;
+//     // end?: string;
+//     // step?: string;
+//   })
+//   console.log(res)
 
-  // let res = await prometheus({
-  //   ql: "sum(container_memory_usage_bytes{namespace=\"open-cluster-management\",pod=~\"multicluster-operators.*\"}) by (pod)",
-  //   data_type: "range",
-  //   group_by: "pod",
-  //   unit: "MiB",
-  //   // cluster: "cluster2",
-  //   start: "2025-06-08T14:56:46Z",
-  //   end: "2025-06-10T14:56:46Z",
-  //   step: "3h",
-  // })
-  // console.log(JSON.stringify(res, null, "  "))
-}
+//   // let res = await prometheus({
+//   //   ql: "sum(container_memory_usage_bytes{namespace=\"open-cluster-management\",pod=~\"multicluster-operators.*\"}) by (pod)",
+//   //   data_type: "range",
+//   //   group_by: "pod",
+//   //   unit: "MiB",
+//   //   // cluster: "cluster2",
+//   //   start: "2025-06-08T14:56:46Z",
+//   //   end: "2025-06-10T14:56:46Z",
+//   //   step: "3h",
+//   // })
+//   // console.log(JSON.stringify(res, null, "  "))
+// }
 
-main();
-// npx ts-node ./src/tools/prometheus.ts
+// main();
+// // npx ts-node ./src/tools/prometheus.ts
